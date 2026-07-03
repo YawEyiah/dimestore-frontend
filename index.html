@@ -367,7 +367,7 @@
     currentLandingId = id;
     const p = PRODUCTS[id];
 
-    document.getElementById('landingLot').textContent = `Lot #${id} · One of one${p.size ? ` · Size ${p.size}` : ''}`;
+    document.getElementById('landingLot').textContent = `Lot #${p.lotNumber} · One of one${p.size ? ` · Size ${p.size}` : ''}`;
     document.getElementById('landingName').textContent = p.name;
     document.getElementById('landingPrice').textContent = `GH₵${p.price}`;
     document.getElementById('buyNowBtn').textContent = `Cop this — GH₵${p.price}`;
@@ -503,7 +503,7 @@
   document.getElementById('zoneSelect').addEventListener('change', updateBreakdown);
 
   // Your Paystack TEST public key — swap for pk_live_... when going live
-  const PAYSTACK_PUBLIC_KEY = 'pk_test_d7e5d7662e1793a0f425aaf9c8cd3f8e320025ce'; // ← paste your test public key here
+  const PAYSTACK_PUBLIC_KEY = 'pk_test_xxxxxxxxxxxxxxxxxxxxxxxx'; // ← paste your test public key here
 
   async function initiatePayment() {
     const name = document.getElementById('checkoutName').value.trim();
