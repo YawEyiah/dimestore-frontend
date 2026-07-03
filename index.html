@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Dimestore</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Work+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://js.paystack.co/v1/inline.js"></script>
+
+<style>
+  :root {
+    --kraft: #c8a776;
+    --kraft-deep: #b08f5c;
+    --pale-kraft: #f4ecdd;
+    --ink: #1a1410;
+    --marigold: #f2a900;
+    --magenta: #e0306c;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--kraft);
+    color: var(--ink);
+    font-family: 'Work Sans', sans-serif;
+    overflow-x: hidden;
+  }
+
+  .view { width: 100%; }
+
+  /* ===== RACK VIEW ===== */
+  .page { max-width: 980px; margin: 0 auto; padding: 30px 18px 110px; }
+
+  .brand { text-align: center; margin-bottom: 28px; }
+  .brand h1 { font-family: 'Alfa Slab One', serif; font-size: 30px; margin: 0 0 6px 0; }
+  .brand p { margin: 0; font-size: 13px; color: rgba(26,20,16,0.65); }
+
+  .rack-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  @media (min-width: 640px) { .rack-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 900px) { .rack-grid { grid-template-columns: repeat(4, 1fr); } }
+
+  .rack-card { background: var(--pale-kraft); box-shadow: 0 6px 14px rgba(26,20,16,0.16); }
+
+  .rack-photo-link { display: block; cursor: pointer; border: none; background: none; padding: 0; width: 100%; }
+  .rack-photo {
+    aspect-ratio: 4 / 5;
+    background: var(--kraft-deep);
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: 11px; color: rgba(26,20,16,0.55);
+    padding: 8px;
+  }
+
+  .rack-tag {
+    margin-top: -6px;
+    padding: 12px 12px 14px;
+    position: relative;
+    clip-path: polygon(
+      0% 10%, 8% 0%, 16% 7%, 24% 1%, 32% 7%, 40% 0%, 48% 6%,
+      56% 0%, 64% 7%, 72% 1%, 80% 6%, 88% 0%, 96% 7%, 100% 1%,
+      100% 100%, 0% 100%
+    );
+  }
+
+  .rack-lot { margin: 0 0 4px 0; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: var(--magenta); text-transform: uppercase; }
+  .rack-name { font-family: 'Alfa Slab One', serif; font-size: 14px; line-height: 1.25; margin: 0 0 8px 0; }
+  .rack-row { display: flex; align-items: center; justify-content: space-between; }
+  .rack-price { font-family: 'Alfa Slab One', serif; font-size: 14px; margin: 0; }
+
+  .add-btn {
+    background: var(--marigold); border: none; border-radius: 6px;
+    padding: 9px 13px; font-size: 12px; font-weight: 700;
+    font-family: 'Work Sans', sans-serif; cursor: pointer;
+    min-height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .add-btn.added { background: var(--ink); color: var(--pale-kraft); }
+
+  /* ===== LANDING VIEW ===== */
+  .lpage { max-width: 480px; margin: 0 auto; min-height: 100vh; position: relative; }
+
+  .landing-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: calc(16px + env(safe-area-inset-top)) 20px 14px;
+  }
+  .back-btn {
+    background: rgba(26,20,16,0.08); border: none; color: var(--ink);
+    font-weight: 600; font-size: 13px; padding: 7px 14px; border-radius: 20px;
+    font-family: 'Work Sans', sans-serif; cursor: pointer;
+  }
+  .landing-brand { font-family: 'Alfa Slab One', serif; font-size: 17px; }
+
+  .gallery { position: relative; height: 54vh; background: var(--kraft-deep); }
+  .gallery-track { display: flex; height: 100%; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .gallery-track::-webkit-scrollbar { display: none; }
+  .gallery-slide { flex: 0 0 100%; scroll-snap-align: start; height: 100%; display: flex; align-items: center; justify-content: center; }
+  .photo-placeholder { border: 2px dashed rgba(26,20,16,0.35); padding: 24px 20px; text-align: center; font-size: 14px; color: rgba(26,20,16,0.55); max-width: 80%; }
+
+  .gallery-dots { position: absolute; bottom: 12px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(26,20,16,0.3); transition: width 0.15s, height 0.15s, background 0.15s; }
+  .dot.active { background: var(--ink); width: 8px; height: 8px; }
+
+  .tag-card {
+    background: var(--pale-kraft);
+    margin: -40px 20px 0;
+    padding: 30px 24px 24px;
+    position: relative;
+    transform: rotate(-1.4deg);
+    box-shadow: 0 10px 24px rgba(26,20,16,0.18);
+    clip-path: polygon(0% 5%, 6% 0%, 12% 4%, 18% 1%, 24% 4%, 30% 0%, 36% 3%, 42% 0%, 48% 4%, 54% 1%, 60% 3%, 66% 0%, 72% 4%, 78% 1%, 84% 3%, 90% 0%, 96% 4%, 100% 1%, 100% 100%, 0% 100%);
+  }
+
+  .tag-hole { width: 14px; height: 14px; border-radius: 50%; background: var(--kraft); border: 2px solid rgba(26,20,16,0.3); position: absolute; top: 16px; left: 24px; }
+  .tag-lot { margin: 0 0 8px 0; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; color: var(--magenta); text-transform: uppercase; }
+  .tag-name { font-family: 'Alfa Slab One', serif; font-size: 26px; line-height: 1.2; margin: 0 0 12px 0; }
+  .tag-price { font-family: 'Alfa Slab One', serif; font-size: 22px; margin: 0 0 20px 0; }
+
+  .tag-actions { display: flex; gap: 10px; }
+  .buy-btn, .add-cart-btn {
+    flex: 1; display: block; font-family: 'Work Sans', sans-serif;
+    font-weight: 700; font-size: 15px; border: none; border-radius: 6px;
+    padding: 16px 0; cursor: pointer;
+  }
+  .buy-btn { background: var(--marigold); color: var(--ink); }
+  .add-cart-btn { background: var(--ink); color: var(--pale-kraft); }
+  .buy-btn:active, .add-cart-btn:active { transform: scale(0.98); }
+
+  .trust-line { margin: 16px 2px 0; font-size: 12.5px; color: rgba(26,20,16,0.65); text-align: center; }
+
+  /* ===== floating cart bar ===== */
+  .cart-bar {
+    position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom));
+    transform: translateX(-50%) translateY(120%);
+    width: calc(100% - 32px); max-width: 460px;
+    background: var(--ink); color: var(--pale-kraft);
+    border-radius: 10px; padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    box-shadow: 0 8px 20px rgba(26,20,16,0.3);
+    transition: transform 0.2s; z-index: 9;
+  }
+  .cart-bar.visible { transform: translateX(-50%) translateY(0); }
+  .cart-bar-info { font-size: 13.5px; }
+  .cart-bar button {
+    background: var(--marigold); color: var(--ink); border: none;
+    border-radius: 6px; padding: 9px 16px; font-weight: 700; font-size: 13px; cursor: pointer;
+  }
+
+  /* ===== shared bottom sheet (cart + checkout) ===== */
+  .sheet-backdrop { position: fixed; inset: 0; background: rgba(26,20,16,0.45); opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 10; }
+  .sheet-backdrop.open { opacity: 1; pointer-events: auto; }
+
+  .checkout-sheet {
+    position: fixed; left: 50%; bottom: 0; width: 100%; max-width: 480px;
+    transform: translate(-50%, 100%);
+    background: var(--pale-kraft);
+    border-radius: 16px 16px 0 0;
+    padding: 10px 22px calc(26px + env(safe-area-inset-bottom));
+    transition: transform 0.25s ease-out;
+    z-index: 11; max-height: 86vh; overflow-y: auto;
+  }
+  .checkout-sheet.open { transform: translate(-50%, 0); }
+
+  .sheet-handle { width: 36px; height: 4px; background: rgba(26,20,16,0.25); border-radius: 4px; margin: 6px auto 16px; }
+  .sheet-title { font-family: 'Alfa Slab One', serif; font-size: 20px; margin: 0 0 14px; }
+
+  .cart-item-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; padding: 9px 0; border-bottom: 1px solid rgba(26,20,16,0.12); }
+  .cart-item-row .remove-btn { background: none; border: none; color: var(--magenta); font-size: 15px; cursor: pointer; padding: 0 0 0 10px; }
+  .checkout-items .cart-item-row { font-size: 13.5px; padding: 6px 0; }
+
+  .field-label { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.03em; margin: 16px 0 6px; color: rgba(26,20,16,0.7); }
+  .field-input { width: 100%; border: 1.5px solid rgba(26,20,16,0.25); background: #fff; border-radius: 6px; padding: 12px; font-size: 16px; font-family: 'Work Sans', sans-serif; }
+  .field-input:focus { outline: none; border-color: var(--marigold); }
+
+  .pay-toggle { display: flex; gap: 8px; margin-top: 16px; }
+  .pay-option { flex: 1; padding: 12px 0; border-radius: 6px; border: 1.5px solid rgba(26,20,16,0.25); background: #fff; font-family: 'Work Sans', sans-serif; font-weight: 600; font-size: 13.5px; cursor: pointer; }
+  .pay-option.active { background: var(--ink); color: var(--pale-kraft); border-color: var(--ink); }
+
+  .price-breakdown { margin: 16px 0 18px; padding: 12px 14px; background: #fff; border-radius: 6px; border: 1.5px solid rgba(26,20,16,0.15); }
+  .price-row { display: flex; justify-content: space-between; font-size: 13.5px; padding: 4px 0; color: rgba(26,20,16,0.75); }
+  .price-row.total { font-weight: 700; color: var(--ink); border-top: 1px solid rgba(26,20,16,0.15); margin-top: 4px; padding-top: 8px; font-size: 15px; }
+
+  .pay-btn { display: block; width: 100%; background: var(--marigold); color: var(--ink); font-family: 'Work Sans', sans-serif; font-weight: 700; font-size: 17px; border: none; border-radius: 6px; padding: 16px 0; cursor: pointer; }
+  .pay-btn:active { transform: scale(0.98); }
+</style>
+</head>
+<body>
+
+<!-- ===== RACK VIEW ===== -->
+<div class="view" id="rackView">
+  <div class="page">
+
+    <header class="brand">
+      <h1>DIMESTORE</h1>
+      <p>The rack — every piece, one of one.</p>
+    </header>
+
+    <!-- Products are loaded dynamically from the backend — see loadProducts() in the script -->
+    <main class="rack-grid" id="rackGrid"></main>
+  </div>
+</div>
+
+<!-- ===== LANDING VIEW ===== -->
+<div class="view" id="landingView" style="display:none;">
+  <main class="lpage">
+
+    <div class="landing-topbar">
+      <button class="back-btn" onclick="showRack()">← Rack</button>
+      <span class="landing-brand">DIMESTORE</span>
+    </div>
+
+    <section class="gallery">
+      <div class="gallery-track" id="galleryTrack">
+        <div class="gallery-slide"><div class="photo-placeholder">Photo 1 — front</div></div>
+        <div class="gallery-slide"><div class="photo-placeholder">Photo 2 — back</div></div>
+        <div class="gallery-slide"><div class="photo-placeholder">Photo 3 — detail / tag close-up</div></div>
+      </div>
+      <div class="gallery-dots" id="galleryDots">
+        <span class="dot active"></span><span class="dot"></span><span class="dot"></span>
+      </div>
+    </section>
+
+    <div class="tag-card">
+      <div class="tag-hole"></div>
+      <p class="tag-lot" id="landingLot">Lot #047 · One of one</p>
+      <h1 class="tag-name" id="landingName">Denim Trucker Jacket</h1>
+      <p class="tag-price" id="landingPrice">GH₵85</p>
+
+      <div class="tag-actions">
+        <button class="add-cart-btn" id="addCartBtn" onclick="toggleThisItem()">Add to cart</button>
+        <button class="buy-btn" id="buyNowBtn" onclick="buyNowThis()">Cop this — GH₵85</button>
+      </div>
+
+      <p class="trust-line">Delivery in Accra: 1–2 days · Pay by Mobile Money or card</p>
+    </div>
+
+  </main>
+</div>
+
+<!-- floating cart bar -->
+<div class="cart-bar" id="cartBar">
+  <span class="cart-bar-info"><span id="cartCount">0 items</span> · <span id="cartTotal">GH₵0</span></span>
+  <button onclick="openCart()">View cart</button>
+</div>
+
+<!-- cart sheet -->
+<div class="sheet-backdrop" id="cartBackdrop" onclick="closeCart()"></div>
+<div class="checkout-sheet" id="cartSheet">
+  <div class="sheet-handle"></div>
+  <h2 class="sheet-title">Your picks</h2>
+  <div id="cartList"></div>
+  <button class="pay-btn" style="margin-top:18px;" onclick="proceedToCheckout()">Checkout</button>
+</div>
+
+<!-- checkout sheet -->
+<div class="sheet-backdrop" id="checkoutBackdrop" onclick="closeCheckout()"></div>
+<div class="checkout-sheet" id="checkoutSheet">
+  <div class="sheet-handle"></div>
+  <h2 class="sheet-title">Checkout</h2>
+  <div id="checkoutItems" class="checkout-items"></div>
+
+  <label class="field-label">Name</label>
+  <input class="field-input" id="checkoutName" type="text" placeholder="Your name">
+
+  <label class="field-label">Phone (for delivery &amp; Mobile Money)</label>
+  <input class="field-input" id="checkoutPhone" type="tel" placeholder="024 123 4567">
+
+  <label class="field-label">Delivery area</label>
+  <select class="field-input" id="zoneSelect">
+    <option value="">Select your area</option>
+  </select>
+
+  <label class="field-label">Landmark / additional directions</label>
+  <input class="field-input" id="checkoutLandmark" type="text" placeholder="e.g. near Shell station, blue gate">
+
+  <p class="field-label">Pay with</p>
+  <div class="pay-toggle">
+    <button class="pay-option active" data-method="momo">Mobile Money</button>
+    <button class="pay-option" data-method="card">Card</button>
+  </div>
+
+  <div class="price-breakdown" id="priceBreakdown"></div>
+
+  <button class="pay-btn" id="payBtn" onclick="initiatePayment()">Pay</button>
+</div>
+
+<script>
+  // Products are loaded from the backend on page load so IDs match the database
+  let PRODUCTS = {};
+  const BACKEND_URL = 'https://dimestore-backend-production.up.railway.app';
+
+  async function loadProducts() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/products`);
+      const products = await res.json();
+      // Key by database ID so cart and checkout use the real ID
+      products.forEach(p => {
+        PRODUCTS[p.id] = { name: p.name, price: p.price, lotNumber: p.lotNumber };
+      });
+      renderRack(products);
+    } catch (err) {
+      console.error('Could not load products:', err);
+    }
+  }
+
+  function renderRack(products) {
+    const grid = document.getElementById('rackGrid');
+    grid.innerHTML = products.map(p => `
+      <div class="rack-card" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}">
+        <button class="rack-photo-link" onclick="showLanding('${p.id}')">
+          <div class="rack-photo">${p.photos[0] ? `<img src="${p.photos[0]}" style="width:100%;height:100%;object-fit:cover;">` : 'Photo'}</div>
+        </button>
+        <div class="rack-tag">
+          <p class="rack-lot">Lot #${p.lotNumber} · One of one</p>
+          <p class="rack-name">${p.name}</p>
+          <div class="rack-row">
+            <p class="rack-price">GH₵${p.price}</p>
+            <button class="add-btn" onclick="toggleCart(this)">Add</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadProducts();
+    loadZones();
+  });
+
+  async function loadZones() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/zones`);
+      const zones = await res.json();
+      const select = document.getElementById('zoneSelect');
+      zones.forEach(z => {
+        const opt = document.createElement('option');
+        opt.value = z.id;
+        opt.textContent = `${z.name} — ${z.fee === 0 ? 'Free' : `GH₵${z.fee}`}`;
+        select.appendChild(opt);
+      });
+    } catch (err) {
+      console.error('Could not load zones:', err);
+    }
+  }
+
+  const cart = {};               // id -> { name, price } — shared by both views, since it's all one page now
+  let activeCheckoutItems = {};  // what the checkout sheet is currently totalling
+  let currentLandingId = null;   // which product the landing view is currently showing
+
+  /* ---------- prevent the page behind an open sheet from scrolling (iOS rubber-banding) ---------- */
+  function lockScroll() { document.body.style.overflow = 'hidden'; }
+  function unlockScroll() { document.body.style.overflow = ''; }
+  document.querySelectorAll('.sheet-backdrop').forEach(el => {
+    el.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+  });
+
+  /* ---------- switching between rack and landing, no navigation involved ---------- */
+  function showRack() {
+    document.getElementById('rackView').style.display = '';
+    document.getElementById('landingView').style.display = 'none';
+    window.scrollTo(0, 0);
+  }
+
+  function showLanding(id) {
+    currentLandingId = id;
+    const p = PRODUCTS[id];
+
+    document.getElementById('landingLot').textContent = `Lot #${id} · One of one`;
+    document.getElementById('landingName').textContent = p.name;
+    document.getElementById('landingPrice').textContent = `GH₵${p.price}`;
+    document.getElementById('buyNowBtn').textContent = `Cop this — GH₵${p.price}`;
+    document.getElementById('addCartBtn').textContent = cart[id] ? 'Added ✓' : 'Add to cart';
+
+    const track = document.getElementById('galleryTrack');
+    track.scrollLeft = 0;
+    document.querySelectorAll('#galleryDots .dot').forEach((d, i) => d.classList.toggle('active', i === 0));
+
+    document.getElementById('rackView').style.display = 'none';
+    document.getElementById('landingView').style.display = '';
+    window.scrollTo(0, 0);
+  }
+
+  /* ---------- cart actions from the landing view ---------- */
+  function toggleThisItem() {
+    const id = currentLandingId;
+    if (cart[id]) {
+      delete cart[id];
+      document.getElementById('addCartBtn').textContent = 'Add to cart';
+    } else {
+      cart[id] = { ...PRODUCTS[id] };
+      document.getElementById('addCartBtn').textContent = 'Added ✓';
+    }
+    syncGridButton(id);
+    updateCartBar();
+  }
+
+  function buyNowThis() {
+    activeCheckoutItems = { [currentLandingId]: { ...PRODUCTS[currentLandingId] } };
+    openCheckoutSheet();
+  }
+
+  /* ---------- quick-add from the grid card itself ---------- */
+  function toggleCart(btn) {
+    const card = btn.closest('.rack-card');
+    const id = card.dataset.id;
+    if (cart[id]) {
+      delete cart[id];
+      btn.textContent = 'Add'; btn.classList.remove('added');
+    } else {
+      cart[id] = { name: card.dataset.name, price: Number(card.dataset.price) };
+      btn.textContent = 'Added ✓'; btn.classList.add('added');
+    }
+    if (id === currentLandingId) {
+      document.getElementById('addCartBtn').textContent = cart[id] ? 'Added ✓' : 'Add to cart';
+    }
+    updateCartBar();
+  }
+
+  function syncGridButton(id) {
+    const card = document.querySelector(`.rack-card[data-id="${id}"]`);
+    if (!card) return;
+    const btn = card.querySelector('.add-btn');
+    if (cart[id]) { btn.textContent = 'Added ✓'; btn.classList.add('added'); }
+    else { btn.textContent = 'Add'; btn.classList.remove('added'); }
+  }
+
+  function cartTotal() { return Object.values(cart).reduce((sum, i) => sum + i.price, 0); }
+
+  function updateCartBar() {
+    const count = Object.keys(cart).length;
+    document.getElementById('cartCount').textContent = `${count} item${count === 1 ? '' : 's'}`;
+    document.getElementById('cartTotal').textContent = `GH₵${cartTotal()}`;
+    document.getElementById('cartBar').classList.toggle('visible', count > 0);
+  }
+
+  /* ---------- cart sheet ---------- */
+  function renderCartList() {
+    const list = document.getElementById('cartList');
+    list.innerHTML = Object.entries(cart).map(([id, item]) => `
+      <div class="cart-item-row">
+        <span>${item.name}</span>
+        <span>GH₵${item.price}<button class="remove-btn" onclick="removeFromCart('${id}')">✕</button></span>
+      </div>
+    `).join('') || '<p style="font-size:13.5px;color:rgba(26,20,16,0.6);">No picks yet — tap a photo or Add on anything in the rack.</p>';
+  }
+
+  function removeFromCart(id) {
+    delete cart[id];
+    syncGridButton(id);
+    if (id === currentLandingId) document.getElementById('addCartBtn').textContent = 'Add to cart';
+    renderCartList();
+    updateCartBar();
+  }
+
+  function openCart() {
+    renderCartList();
+    document.getElementById('cartSheet').classList.add('open');
+    document.getElementById('cartBackdrop').classList.add('open');
+    lockScroll();
+  }
+  function closeCart() {
+    document.getElementById('cartSheet').classList.remove('open');
+    document.getElementById('cartBackdrop').classList.remove('open');
+    unlockScroll();
+  }
+
+  function proceedToCheckout() {
+    activeCheckoutItems = cart;
+    closeCart();
+    openCheckoutSheet();
+  }
+
+  /* ---------- checkout sheet: shared by "Buy now" and full-cart checkout ---------- */
+  function renderCheckoutItems() {
+    document.getElementById('checkoutItems').innerHTML = Object.values(activeCheckoutItems).map(i => `
+      <div class="cart-item-row"><span>${i.name}</span><span>GH₵${i.price}</span></div>
+    `).join('');
+  }
+
+  function updateBreakdown() {
+    const subtotal = Object.values(activeCheckoutItems).reduce((s, i) => s + i.price, 0);
+    const zoneSelect = document.getElementById('zoneSelect');
+    const zoneValue = zoneSelect.value;
+    let fee = 0, feeLabel = 'Select area';
+    if (zoneValue) {
+      const selectedText = zoneSelect.options[zoneSelect.selectedIndex].textContent;
+      const feeMatch = selectedText.match(/GH₵(\d+)/);
+      fee = feeMatch ? Number(feeMatch[1]) : 0;
+      feeLabel = fee === 0 ? 'Free' : `GH₵${fee}`;
+    }
+    const total = subtotal + fee;
+    document.getElementById('priceBreakdown').innerHTML = `
+      <div class="price-row"><span>Items (${Object.keys(activeCheckoutItems).length})</span><span>GH₵${subtotal}</span></div>
+      <div class="price-row"><span>Delivery</span><span>${feeLabel}</span></div>
+      <div class="price-row total"><span>Total</span><span>GH₵${total}</span></div>
+    `;
+    const btn = document.getElementById('payBtn');
+    btn.textContent = `Pay GH₵${total}`;
+    btn.dataset.total = total;
+  }
+  document.getElementById('zoneSelect').addEventListener('change', updateBreakdown);
+
+  // Your Paystack TEST public key — swap for pk_live_... when going live
+  const PAYSTACK_PUBLIC_KEY = 'pk_test_d7e5d7662e1793a0f425aaf9c8cd3f8e320025ce'; // ← paste your test public key here
+
+  async function initiatePayment() {
+    const name = document.getElementById('checkoutName').value.trim();
+    const phone = document.getElementById('checkoutPhone').value.trim();
+    const landmark = document.getElementById('checkoutLandmark').value.trim();
+    const zoneSelect = document.getElementById('zoneSelect');
+    const paymentMethod = document.querySelector('.pay-option.active')?.dataset.method ?? 'momo';
+
+    // Basic validation before hitting the backend
+    if (!name) { alert('Please enter your name.'); return; }
+    if (!phone) { alert('Please enter your phone number.'); return; }
+    if (zoneSelect.selectedIndex === 0) { alert('Please select a delivery area.'); return; }
+
+    const zoneId = zoneSelect.value;
+    const productIds = Object.keys(activeCheckoutItems);
+
+    const payBtn = document.getElementById('payBtn');
+    payBtn.textContent = 'Creating order...';
+    payBtn.disabled = true;
+
+    try {
+      // Step 1: create the order in the database and get a Paystack access code back
+      const res = await fetch(`${BACKEND_URL}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          phone,
+          landmark,
+          items: productIds,
+          deliveryZoneId: zoneId,
+          paymentMethod,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? 'Could not create order.');
+      }
+
+      const { accessCode, orderRef, totalPesewas } = await res.json();
+
+      // Step 2: open the Paystack popup using the access code from the backend
+      const handler = PaystackPop.setup({
+        key: PAYSTACK_PUBLIC_KEY,
+        email: `customer@dimestore.com`,
+        amount: totalPesewas,
+        access_code: accessCode,
+        callback: function(response) {
+          // Payment completed — show confirmation and clear the cart
+          closeCheckout();
+          showOrderConfirmation(orderRef);
+        },
+        onClose: function() {
+          // Customer closed the popup without paying — re-enable the button
+          payBtn.textContent = `Pay GH₵${document.getElementById('payBtn').dataset.total}`;
+          payBtn.disabled = false;
+        },
+      });
+      handler.openIframe();
+
+    } catch (err) {
+      alert(err.message ?? 'Something went wrong. Please try again.');
+      payBtn.textContent = 'Pay';
+      payBtn.disabled = false;
+    }
+  }
+
+  function showOrderConfirmation(orderRef) {
+    // Clear the cart
+    Object.keys(cart).forEach(id => {
+      delete cart[id];
+      syncGridButton(id);
+    });
+    updateCartBar();
+
+    // Show a simple confirmation overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position:fixed;inset:0;background:var(--pale-kraft);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      z-index:100;padding:32px;text-align:center;
+    `;
+    overlay.innerHTML = `
+      <p style="font-size:40px;margin:0 0 12px;">✓</p>
+      <h2 style="font-family:'Alfa Slab One',serif;font-size:24px;margin:0 0 10px;">Order received</h2>
+      <p style="font-size:14px;color:rgba(26,20,16,0.7);margin:0 0 6px;">Ref: <strong>${orderRef}</strong></p>
+      <p style="font-size:13px;color:rgba(26,20,16,0.65);margin:0 0 28px;">We'll reach out on <strong>${document.getElementById('checkoutPhone').value}</strong> to confirm delivery.</p>
+      <button onclick="this.parentElement.remove();showRack();" style="background:var(--marigold);border:none;border-radius:6px;padding:14px 28px;font-weight:700;font-size:15px;cursor:pointer;">Back to the rack</button>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  function openCheckoutSheet() {
+    renderCheckoutItems();
+    updateBreakdown();
+    document.getElementById('checkoutSheet').classList.add('open');
+    document.getElementById('checkoutBackdrop').classList.add('open');
+    lockScroll();
+  }
+  function closeCheckout() {
+    document.getElementById('checkoutSheet').classList.remove('open');
+    document.getElementById('checkoutBackdrop').classList.remove('open');
+    unlockScroll();
+  }
+
+  document.querySelectorAll('.pay-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.pay-option').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // gallery dot sync (landing view)
+  const track = document.getElementById('galleryTrack');
+  const dots = document.querySelectorAll('#galleryDots .dot');
+  track.addEventListener('scroll', () => {
+    const index = Math.round(track.scrollLeft / track.clientWidth);
+    dots.forEach((d, i) => d.classList.toggle('active', i === index));
+  });
+</script>
+
+</body>
+</html>
