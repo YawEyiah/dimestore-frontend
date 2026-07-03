@@ -565,27 +565,12 @@
         throw new Error(err.error ?? 'Could not create order.');
       }
 
-      const { accessCode, orderRef, totalPesewas } = await res.json();
+      const { accessCode, orderRef, totalPesewas, authorizationUrl } = await res.json();
 
-      // Step 2: open the Paystack popup using the access code from the backend
-      const handler = PaystackPop.setup({
-        key: PAYSTACK_PUBLIC_KEY,
-        email: `customer@dimestore.com`,
-        amount: totalPesewas,
-        access_code: accessCode,
-        callback: function(response) {
-          // Payment completed — refresh products so sold item disappears, clear cart, show confirmation
-          closeCheckout();
-          loadProducts();
-          showOrderConfirmation(orderRef);
-        },
-        onClose: function() {
-          // Customer closed the popup without paying — re-enable the button
-          payBtn.textContent = `Pay GH₵${document.getElementById('payBtn').dataset.total}`;
-          payBtn.disabled = false;
-        },
-      });
-      handler.openIframe();
+      // Using redirect method as recommended by Paystack support to trigger
+      // integration review. Once the account is active we'll switch back to
+      // the inline popup for a smoother experience.
+      window.location.href = authorizationUrl;
 
     } catch (err) {
       alert(err.message ?? 'Something went wrong. Please try again.');
