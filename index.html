@@ -297,7 +297,7 @@
       const products = await res.json();
       // Key by database ID so cart and checkout use the real ID
       products.forEach(p => {
-        PRODUCTS[p.id] = { name: p.name, price: p.price, lotNumber: p.lotNumber };
+        PRODUCTS[p.id] = { name: p.name, price: p.price, lotNumber: p.lotNumber, size: p.size };
       });
       renderRack(products);
     } catch (err) {
@@ -313,7 +313,7 @@
           <div class="rack-photo">${p.photos[0] ? `<img src="${p.photos[0]}" style="width:100%;height:100%;object-fit:cover;">` : 'Photo'}</div>
         </button>
         <div class="rack-tag">
-          <p class="rack-lot">Lot #${p.lotNumber} · One of one</p>
+          <p class="rack-lot">Lot #${p.lotNumber} · One of one${p.size ? ` · Size ${p.size}` : ''}</p>
           <p class="rack-name">${p.name}</p>
           <div class="rack-row">
             <p class="rack-price">GH₵${p.price}</p>
@@ -367,7 +367,7 @@
     currentLandingId = id;
     const p = PRODUCTS[id];
 
-    document.getElementById('landingLot').textContent = `Lot #${id} · One of one`;
+    document.getElementById('landingLot').textContent = `Lot #${id} · One of one${p.size ? ` · Size ${p.size}` : ''}`;
     document.getElementById('landingName').textContent = p.name;
     document.getElementById('landingPrice').textContent = `GH₵${p.price}`;
     document.getElementById('buyNowBtn').textContent = `Cop this — GH₵${p.price}`;
@@ -553,8 +553,9 @@
         amount: totalPesewas,
         access_code: accessCode,
         callback: function(response) {
-          // Payment completed — show confirmation and clear the cart
+          // Payment completed — refresh products so sold item disappears, clear cart, show confirmation
           closeCheckout();
+          loadProducts();
           showOrderConfirmation(orderRef);
         },
         onClose: function() {
