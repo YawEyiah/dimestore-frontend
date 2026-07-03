@@ -297,7 +297,7 @@
       const products = await res.json();
       // Key by database ID so cart and checkout use the real ID
       products.forEach(p => {
-        PRODUCTS[p.id] = { name: p.name, price: p.price, lotNumber: p.lotNumber, size: p.size };
+        PRODUCTS[p.id] = { name: p.name, price: p.price, lotNumber: p.lotNumber, size: p.size, photos: p.photos };
       });
       renderRack(products);
     } catch (err) {
@@ -373,9 +373,30 @@
     document.getElementById('buyNowBtn').textContent = `Cop this — GH₵${p.price}`;
     document.getElementById('addCartBtn').textContent = cart[id] ? 'Added ✓' : 'Add to cart';
 
+    // Update gallery slides with actual product photos
     const track = document.getElementById('galleryTrack');
+    const photos = p.photos && p.photos.length > 0 ? p.photos : [null, null, null];
+    const labels = ['front', 'back', 'detail / tag close-up'];
+    track.innerHTML = photos.map((url, i) => `
+      <div class="gallery-slide">
+        ${url
+          ? `<img src="${url}" style="width:100%;height:100%;object-fit:cover;" alt="${p.name} ${labels[i]}">`
+          : `<div class="photo-placeholder">Photo ${i + 1} — ${labels[i]}</div>`
+        }
+      </div>
+    `).join('');
+
+    // Update dots to match number of photos
+    const dotsEl = document.getElementById('galleryDots');
+    dotsEl.innerHTML = photos.map((_, i) => `<span class="dot ${i === 0 ? 'active' : ''}"></span>`).join('');
+
     track.scrollLeft = 0;
-    document.querySelectorAll('#galleryDots .dot').forEach((d, i) => d.classList.toggle('active', i === 0));
+
+    // Re-bind dot sync since track HTML was replaced
+    track.onscroll = () => {
+      const index = Math.round(track.scrollLeft / track.clientWidth);
+      dotsEl.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === index));
+    };
 
     document.getElementById('rackView').style.display = 'none';
     document.getElementById('landingView').style.display = '';
@@ -503,7 +524,7 @@
   document.getElementById('zoneSelect').addEventListener('change', updateBreakdown);
 
   // Your Paystack TEST public key — swap for pk_live_... when going live
-  const PAYSTACK_PUBLIC_KEY = 'pk_test_xxxxxxxxxxxxxxxxxxxxxxxx'; // ← paste your test public key here
+  const PAYSTACK_PUBLIC_KEY = 'pk_test_d7e5d7662e1793a0f425aaf9c8cd3f8e320025ce'; // ← paste your test public key here
 
   async function initiatePayment() {
     const name = document.getElementById('checkoutName').value.trim();
