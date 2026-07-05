@@ -327,7 +327,26 @@
   document.addEventListener('DOMContentLoaded', () => {
     loadProducts();
     loadZones();
+    checkPaymentCallback();
   });
+
+  // When Paystack redirects back after payment, show the confirmation
+  function checkPaymentCallback() {
+    const params = new URLSearchParams(window.location.search);
+    const trxref = params.get('trxref') || params.get('reference');
+    if (!trxref) return;
+
+    const orderRef = sessionStorage.getItem('pendingOrderRef') || trxref;
+    const phone = sessionStorage.getItem('pendingOrderPhone') || '';
+    sessionStorage.removeItem('pendingOrderRef');
+    sessionStorage.removeItem('pendingOrderPhone');
+
+    // Clean the URL so refreshing doesn't re-trigger this
+    window.history.replaceState({}, '', window.location.pathname);
+
+    // Wait for products to load then show confirmation
+    setTimeout(() => showOrderConfirmation(orderRef, phone), 1000);
+  }
 
   async function loadZones() {
     try {
@@ -565,25 +584,14 @@
         throw new Error(err.error ?? 'Could not create order.');
       }
 
-      const { accessCode, orderRef, totalPesewas } = await res.json();
+      const { accessCode, orderRef, totalPesewas, authorizationUrl } = await res.json();
 
-      // Inline popup — works now that the account is active
-      const handler = PaystackPop.setup({
-        key: PAYSTACK_PUBLIC_KEY,
-        email: `customer@dimestore.com`,
-        amount: totalPesewas,
-        access_code: accessCode,
-        callback: function(response) {
-          closeCheckout();
-          loadProducts();
-          showOrderConfirmation(orderRef);
-        },
-        onClose: function() {
-          payBtn.textContent = `Pay GH₵${payBtn.dataset.total}`;
-          payBtn.disabled = false;
-        },
-      });
-      handler.openIframe();
+      // Using redirect method — Paystack Ghana's inline popup has a currency
+      // restriction that doesn't affect the redirect flow.
+      // Store the orderRef so the callback page can show the confirmation.
+      sessionStorage.setItem('pendingOrderRef', orderRef);
+      sessionStorage.setItem('pendingOrderPhone', document.getElementById('checkoutPhone').value.trim());
+      window.location.href = authorizationUrl;
 
     } catch (err) {
       alert(err.message ?? 'Something went wrong. Please try again.');
@@ -592,7 +600,8 @@
     }
   }
 
-  function showOrderConfirmation(orderRef) {
+  function showOrderConfirmation(orderRef, phone) {
+    const displayPhone = phone || document.getElementById('checkoutPhone')?.value || '';
     // Clear the cart
     Object.keys(cart).forEach(id => {
       delete cart[id];
@@ -611,7 +620,7 @@
       <p style="font-size:40px;margin:0 0 12px;">✓</p>
       <h2 style="font-family:'Alfa Slab One',serif;font-size:24px;margin:0 0 10px;">Order received</h2>
       <p style="font-size:14px;color:rgba(26,20,16,0.7);margin:0 0 6px;">Ref: <strong>${orderRef}</strong></p>
-      <p style="font-size:13px;color:rgba(26,20,16,0.65);margin:0 0 28px;">We'll reach out on <strong>${document.getElementById('checkoutPhone').value}</strong> to confirm delivery.</p>
+      <p style="font-size:13px;color:rgba(26,20,16,0.65);margin:0 0 28px;">We'll reach out on <strong>${displayPhone}</strong> to confirm delivery.</p>
       <button onclick="this.parentElement.remove();showRack();" style="background:var(--marigold);border:none;border-radius:6px;padding:14px 28px;font-weight:700;font-size:15px;cursor:pointer;">Back to the rack</button>
     `;
     document.body.appendChild(overlay);
