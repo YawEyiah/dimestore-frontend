@@ -524,7 +524,7 @@
   document.getElementById('zoneSelect').addEventListener('change', updateBreakdown);
 
   // Your Paystack TEST public key — swap for pk_live_... when going live
-  const PAYSTACK_PUBLIC_KEY = 'pk_test_d7e5d7662e1793a0f425aaf9c8cd3f8e320025ce'; // ← paste your test public key here
+  const PAYSTACK_PUBLIC_KEY = 'pk_live_3739460d3fb558ac143cb3eccb2a1585639dd714'; // ← paste your test public key here
 
   async function initiatePayment() {
     const name = document.getElementById('checkoutName').value.trim();
@@ -565,12 +565,25 @@
         throw new Error(err.error ?? 'Could not create order.');
       }
 
-      const { accessCode, orderRef, totalPesewas, authorizationUrl } = await res.json();
+      const { accessCode, orderRef, totalPesewas } = await res.json();
 
-      // Using redirect method as recommended by Paystack support to trigger
-      // integration review. Once the account is active we'll switch back to
-      // the inline popup for a smoother experience.
-      window.location.href = authorizationUrl;
+      // Inline popup — works now that the account is active
+      const handler = PaystackPop.setup({
+        key: PAYSTACK_PUBLIC_KEY,
+        email: `customer@dimestore.com`,
+        amount: totalPesewas,
+        access_code: accessCode,
+        callback: function(response) {
+          closeCheckout();
+          loadProducts();
+          showOrderConfirmation(orderRef);
+        },
+        onClose: function() {
+          payBtn.textContent = `Pay GH₵${payBtn.dataset.total}`;
+          payBtn.disabled = false;
+        },
+      });
+      handler.openIframe();
 
     } catch (err) {
       alert(err.message ?? 'Something went wrong. Please try again.');
