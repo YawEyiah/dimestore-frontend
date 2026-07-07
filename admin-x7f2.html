@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dimestore Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --kraft: #c8a776;
+    --pale-kraft: #f4ecdd;
+    --ink: #1a1410;
+    --marigold: #f2a900;
+    --magenta: #e0306c;
+    --green: #2d9e6b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Work Sans', sans-serif; background: #f5f5f5; color: var(--ink); }
+
+  .login-screen {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; background: var(--ink);
+  }
+  .login-card {
+    background: var(--pale-kraft); padding: 36px 32px;
+    border-radius: 12px; width: 320px; text-align: center;
+  }
+  .login-card h1 { font-size: 20px; margin: 0 0 6px; }
+  .login-card p { font-size: 13px; color: rgba(26,20,16,0.6); margin: 0 0 20px; }
+  .login-card input {
+    width: 100%; border: 1.5px solid rgba(26,20,16,0.2);
+    border-radius: 6px; padding: 11px 14px; font-size: 15px;
+    font-family: 'Work Sans', sans-serif; margin-bottom: 14px;
+  }
+  .login-card input:focus { outline: none; border-color: var(--marigold); }
+  .btn {
+    display: inline-block; background: var(--marigold); color: var(--ink);
+    border: none; border-radius: 6px; padding: 12px 20px;
+    font-weight: 700; font-size: 14px; cursor: pointer; width: 100%;
+  }
+  .btn.secondary { background: var(--ink); color: var(--pale-kraft); }
+  .btn.danger { background: var(--magenta); color: #fff; }
+  .btn.success { background: var(--green); color: #fff; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .admin-shell { display: none; }
+  .topbar {
+    background: var(--ink); color: var(--pale-kraft);
+    padding: 14px 24px; display: flex; align-items: center;
+    justify-content: space-between;
+  }
+  .topbar h1 { margin: 0; font-size: 17px; }
+  .topbar span { font-size: 12px; opacity: 0.6; }
+
+  .main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .stat-card {
+    background: #fff; border-radius: 8px; padding: 16px;
+    border-left: 4px solid var(--marigold);
+  }
+  .stat-card .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(26,20,16,0.5); margin-bottom: 6px; }
+  .stat-card .value { font-size: 24px; font-weight: 700; }
+
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .filter-btn {
+    padding: 6px 14px; border-radius: 20px; border: 1.5px solid rgba(26,20,16,0.2);
+    background: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
+    font-family: 'Work Sans', sans-serif;
+  }
+  .filter-btn.active { background: var(--ink); color: var(--pale-kraft); border-color: var(--ink); }
+
+  .order-card {
+    background: #fff; border-radius: 10px; margin-bottom: 14px;
+    border: 1.5px solid rgba(26,20,16,0.08); overflow: hidden;
+  }
+  .order-header {
+    padding: 14px 18px; display: flex; align-items: center;
+    justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    border-bottom: 1px solid rgba(26,20,16,0.08);
+    cursor: pointer;
+  }
+  .order-ref { font-weight: 700; font-size: 14px; }
+  .order-time { font-size: 12px; color: rgba(26,20,16,0.5); }
+  .status-badge {
+    padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .status-CREATED       { background: #e8e8e8; color: #555; }
+  .status-PAYMENT_PENDING { background: #fff3cd; color: #856404; }
+  .status-PAID          { background: #d1ecf1; color: #0c5460; }
+  .status-PACKED        { background: #cce5ff; color: #004085; }
+  .status-DISPATCHED    { background: #d4edda; color: #155724; }
+  .status-DELIVERED     { background: #d4edda; color: #155724; }
+  .status-FOLLOWED_UP   { background: #e2d9f3; color: #4a235a; }
+  .status-PAYMENT_FAILED { background: #f8d7da; color: #721c24; }
+  .status-CANCELLED     { background: #f8d7da; color: #721c24; }
+
+  .order-body { padding: 14px 18px; display: none; }
+  .order-body.open { display: block; }
+
+  .order-row { display: flex; justify-content: space-between; font-size: 13.5px; padding: 5px 0; border-bottom: 1px solid rgba(26,20,16,0.06); }
+  .order-row:last-child { border: none; }
+  .order-row .label { color: rgba(26,20,16,0.55); }
+
+  .items-list { margin: 10px 0; }
+  .item-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px; background: var(--pale-kraft); border-radius: 6px; margin-bottom: 6px;
+    font-size: 13px;
+  }
+
+  .action-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .action-row .btn { width: auto; padding: 9px 16px; font-size: 13px; }
+
+  .empty { text-align: center; padding: 60px 20px; color: rgba(26,20,16,0.4); font-size: 14px; }
+  .loading { text-align: center; padding: 40px; color: rgba(26,20,16,0.4); }
+</style>
+</head>
+<body>
+
+<!-- Login screen -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <h1>DIMESTORE</h1>
+    <p>Admin access</p>
+    <input type="password" id="passwordInput" placeholder="Password" onkeydown="if(event.key==='Enter') login()">
+    <button class="btn" onclick="login()">Sign in</button>
+  </div>
+</div>
+
+<!-- Admin shell -->
+<div class="admin-shell" id="adminShell">
+  <div class="topbar">
+    <h1>DIMESTORE — Orders</h1>
+    <span id="lastRefresh">Loading...</span>
+  </div>
+
+  <div class="main">
+    <div class="stats" id="statsRow"></div>
+
+    <div class="filters" id="filterRow">
+      <button class="filter-btn active" onclick="setFilter('ALL', this)">All</button>
+      <button class="filter-btn" onclick="setFilter('PAID', this)">Paid</button>
+      <button class="filter-btn" onclick="setFilter('PACKED', this)">Packed</button>
+      <button class="filter-btn" onclick="setFilter('DISPATCHED', this)">Dispatched</button>
+      <button class="filter-btn" onclick="setFilter('DELIVERED', this)">Delivered</button>
+      <button class="filter-btn" onclick="setFilter('CANCELLED', this)">Cancelled</button>
+    </div>
+
+    <div id="ordersList"><div class="loading">Loading orders...</div></div>
+  </div>
+</div>
+
+<script>
+  const BACKEND = 'https://dimestore-backend-production-a7a7.up.railway.app';
+  let password = '';
+  let allOrders = [];
+  let activeFilter = 'ALL';
+
+  function login() {
+    const input = document.getElementById('passwordInput').value;
+    if (!input) return;
+    password = input;
+    loadOrders();
+  }
+
+  async function loadOrders() {
+    try {
+      const res = await fetch(`${BACKEND}/admin/orders`, {
+        headers: { 'x-admin-password': password }
+      });
+      if (res.status === 401) {
+        alert('Wrong password');
+        password = '';
+        return;
+      }
+      allOrders = await res.json();
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('adminShell').style.display = 'block';
+      document.getElementById('lastRefresh').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+      renderStats();
+      renderOrders();
+    } catch (err) {
+      alert('Could not connect to backend');
+    }
+  }
+
+  function renderStats() {
+    const counts = {};
+    let revenue = 0;
+    allOrders.forEach(o => {
+      counts[o.status] = (counts[o.status] || 0) + 1;
+      if (o.status === 'PAID' || o.status === 'PACKED' || o.status === 'DISPATCHED' || o.status === 'DELIVERED') {
+        revenue += o.total;
+      }
+    });
+    document.getElementById('statsRow').innerHTML = `
+      <div class="stat-card"><div class="label">Total orders</div><div class="value">${allOrders.length}</div></div>
+      <div class="stat-card"><div class="label">Paid</div><div class="value">${counts['PAID'] || 0}</div></div>
+      <div class="stat-card"><div class="label">To dispatch</div><div class="value">${counts['PACKED'] || 0}</div></div>
+      <div class="stat-card"><div class="label">In transit</div><div class="value">${counts['DISPATCHED'] || 0}</div></div>
+      <div class="stat-card"><div class="label">Revenue</div><div class="value">GH₵${revenue.toFixed(2)}</div></div>
+    `;
+  }
+
+  function setFilter(filter, btn) {
+    activeFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderOrders();
+  }
+
+  function renderOrders() {
+    const filtered = activeFilter === 'ALL' ? allOrders : allOrders.filter(o => o.status === activeFilter);
+    const list = document.getElementById('ordersList');
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="empty">No orders in this category.</div>';
+      return;
+    }
+    list.innerHTML = filtered.map(o => `
+      <div class="order-card">
+        <div class="order-header" onclick="toggleOrder('${o.id}')">
+          <div>
+            <div class="order-ref">${o.customer.name} · ${o.items.map(i => i.name).join(', ')}</div>
+            <div class="order-time">${new Date(o.createdAt).toLocaleString('en-GH')}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="status-badge status-${o.status}">${o.status.replace('_', ' ')}</span>
+            <span style="font-size:16px;color:rgba(26,20,16,0.4);">▾</span>
+          </div>
+        </div>
+        <div class="order-body" id="body-${o.id}">
+          <div class="items-list">
+            ${o.items.map(i => `
+              <div class="item-row">
+                <span><strong>Lot #${i.lotNumber}</strong> ${i.name}${i.size ? ` · Size ${i.size}` : ''}</span>
+                <span>GH₵${i.price}</span>
+              </div>
+            `).join('')}
+          </div>
+          <div class="order-row"><span class="label">Phone</span><span><a href="tel:${o.customer.phone}">${o.customer.phone}</a></span></div>
+          <div class="order-row"><span class="label">Delivery zone</span><span>${o.deliveryZone}</span></div>
+          ${o.landmark ? `<div class="order-row"><span class="label">Landmark</span><span>${o.landmark}</span></div>` : ''}
+          <div class="order-row"><span class="label">Payment</span><span>${o.paymentMethod}</span></div>
+          <div class="order-row"><span class="label">Subtotal</span><span>GH₵${o.subtotal}</span></div>
+          <div class="order-row"><span class="label">Delivery fee</span><span>GH₵${o.deliveryFee}</span></div>
+          <div class="order-row"><span class="label">Total</span><span><strong>GH₵${o.total}</strong></span></div>
+
+          <div class="action-row">
+            ${o.status === 'PAID' ? `<button class="btn success" onclick="updateStatus('${o.id}', 'PACKED')">Mark as Packed</button>` : ''}
+            ${o.status === 'PACKED' ? `<button class="btn success" onclick="updateStatus('${o.id}', 'DISPATCHED')">Mark as Dispatched</button>` : ''}
+            ${o.status === 'DISPATCHED' ? `<button class="btn success" onclick="updateStatus('${o.id}', 'DELIVERED')">Mark as Delivered</button>` : ''}
+            ${o.status === 'DELIVERED' ? `<button class="btn secondary" onclick="updateStatus('${o.id}', 'FOLLOWED_UP')">Mark as Followed Up</button>` : ''}
+            ${!['CANCELLED','DELIVERED','FOLLOWED_UP'].includes(o.status) ? `<button class="btn danger" onclick="updateStatus('${o.id}', 'CANCELLED')">Cancel order</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function toggleOrder(id) {
+    const body = document.getElementById(`body-${id}`);
+    body.classList.toggle('open');
+  }
+
+  async function updateStatus(orderId, newStatus) {
+    try {
+      const res = await fetch(`${BACKEND}/admin/orders/${orderId}/status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-password': password,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      await loadOrders();
+    } catch (err) {
+      alert('Could not update order status');
+    }
+  }
+
+  // Auto-refresh every 60 seconds so new orders appear without manual reload
+  setInterval(() => { if (password) loadOrders(); }, 60000);
+</script>
+
+</body>
+</html>
