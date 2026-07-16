@@ -54,6 +54,29 @@
     padding: 8px;
   }
 
+  .sort-bar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin: -10px 4px 22px; }
+  .sort-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--magenta);
+  }
+  .sort-bar select {
+    appearance: none; -webkit-appearance: none;
+    background-color: var(--pale-kraft);
+    border: 1.5px solid var(--ink);
+    border-radius: 20px;
+    padding: 8px 34px 8px 16px;
+    font-size: 12.5px; font-weight: 700; font-family: 'Work Sans', sans-serif;
+    color: var(--ink);
+    box-shadow: 0 3px 8px rgba(26,20,16,0.14);
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231a1410' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    transition: border-color 0.15s ease;
+  }
+  .sort-bar select:focus { outline: none; border-color: var(--marigold); }
+  .sort-bar select:active { transform: scale(0.98); }
+
   .rack-tag {
     margin-top: -6px;
     padding: 12px 12px 14px;
@@ -211,12 +234,23 @@
       <p>The rack — every piece, one of one.</p>
     </header>
 
+    <div class="sort-bar">
+      <span class="sort-label">Sort</span>
+      <select id="sortSelect" onchange="sortAndRender()">
+        <option value="default">Featured</option>
+        <option value="price-asc">Price: Low to High</option>
+        <option value="price-desc">Price: High to Low</option>
+        <option value="size">Size</option>
+        <option value="category">Type of clothing</option>
+      </select>
+    </div>
+
     <!-- Products are loaded dynamically from the backend — see loadProducts() in the script -->
     <main class="rack-grid" id="rackGrid"></main>
 
     <footer class="site-footer">
       Questions? We're always here.<br>
-      Call or WhatsApp us on <a href="https://wa.me/233206681950">+233 20 668 1950</a>
+      Call or WhatsApp us on <a href="https://wa.me/233548910383">+233 54 891 0383</a>
     </footer>
 
   </div>
@@ -257,7 +291,7 @@
     </div>
 
     <footer class="site-footer">
-      Questions? Call or WhatsApp us on <a href="https://wa.me/233548910383">+233 20 668 1950</a>
+      Questions? Call or WhatsApp us on <a href="https://wa.me/233548910383">+233 54 891 0383</a>
     </footer>
 
   </main>
@@ -296,6 +330,11 @@
     <option value="">Select your area</option>
   </select>
 
+  <div id="otherZoneWrap" style="display:none;">
+    <label class="field-label">Type your location</label>
+    <input class="field-input" id="otherZoneInput" type="text" placeholder="e.g. Kasoa, near the market">
+  </div>
+
   <label class="field-label">Landmark / additional directions</label>
   <input class="field-input" id="checkoutLandmark" type="text" placeholder="e.g. near Shell station, blue gate">
 
@@ -313,6 +352,7 @@
 <script>
   // Products are loaded from the backend on page load so IDs match the database
   let PRODUCTS = {};
+  let allProducts = []; // raw list from the backend, kept so we can re-sort without re-fetching
   const BACKEND_URL = 'https://dimestore-backend-production-a7a7.up.railway.app';
 
   async function loadProducts() {
@@ -323,16 +363,43 @@
       products.forEach(p => {
         PRODUCTS[p.id] = { name: p.name, price: p.price, lotNumber: p.lotNumber, size: p.size, photos: p.photos };
       });
+      allProducts = products;
       renderRack(products);
     } catch (err) {
       console.error('Could not load products:', err);
     }
   }
 
+  // Rough size ordering for standard letter sizes; anything else (e.g. "32W 30L") falls back to alphabetical
+  const SIZE_ORDER = { 'XS': 0, 'S': 1, 'M': 2, 'L': 3, 'XL': 4, 'XXL': 5, 'XXXL': 6 };
+  function sizeRank(size) {
+    if (!size) return 999;
+    const key = size.trim().toUpperCase();
+    return key in SIZE_ORDER ? SIZE_ORDER[key] : 500; // unknown formats sort after standard sizes
+  }
+
+  function sortAndRender() {
+    const mode = document.getElementById('sortSelect').value;
+    const sorted = [...allProducts];
+    if (mode === 'price-asc') {
+      sorted.sort((a, b) => a.price - b.price);
+    } else if (mode === 'price-desc') {
+      sorted.sort((a, b) => b.price - a.price);
+    } else if (mode === 'size') {
+      sorted.sort((a, b) => {
+        const diff = sizeRank(a.size) - sizeRank(b.size);
+        return diff !== 0 ? diff : (a.size || '').localeCompare(b.size || '');
+      });
+    } else if (mode === 'category') {
+      sorted.sort((a, b) => (a.category || '').localeCompare(b.category || ''));
+    }
+    renderRack(sorted);
+  }
+
   function renderRack(products) {
     const grid = document.getElementById('rackGrid');
     grid.innerHTML = products.map(p => `
-      <div class="rack-card" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}">
+      <div class="rack-card" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}" data-category="${p.category || ''}" data-size="${p.size || ''}">
         <button class="rack-photo-link" onclick="showLanding('${p.id}')">
           <div class="rack-photo">${p.photos[0] ? `<img src="${p.photos[0]}" style="width:100%;height:100%;object-fit:cover;">` : 'Photo'}</div>
         </button>
@@ -372,6 +439,8 @@
     setTimeout(() => showOrderConfirmation(orderRef, phone), 1000);
   }
 
+  let otherZoneId = null; // set once we find the "Other" zone in the loaded list, so we know when to reveal the free-text field
+
   async function loadZones() {
     try {
       const res = await fetch(`${BACKEND_URL}/zones`);
@@ -382,10 +451,20 @@
         opt.value = z.id;
         opt.textContent = z.name;
         select.appendChild(opt);
+        if (z.name.trim().toLowerCase().startsWith('other')) {
+          otherZoneId = z.id;
+        }
       });
     } catch (err) {
       console.error('Could not load zones:', err);
     }
+  }
+
+  function handleZoneChange() {
+    const zoneSelect = document.getElementById('zoneSelect');
+    const wrap = document.getElementById('otherZoneWrap');
+    wrap.style.display = (otherZoneId && zoneSelect.value === otherZoneId) ? 'block' : 'none';
+    updateBreakdown();
   }
 
   const cart = {};               // id -> { name, price } — shared by both views, since it's all one page now
@@ -563,7 +642,7 @@
     btn.textContent = `Pay GH₵${total}`;
     btn.dataset.total = total;
   }
-  document.getElementById('zoneSelect').addEventListener('change', updateBreakdown);
+  document.getElementById('zoneSelect').addEventListener('change', handleZoneChange);
 
   // Your Paystack TEST public key — swap for pk_live_... when going live
   const PAYSTACK_PUBLIC_KEY = 'pk_live_3739460d3fb558ac143cb3eccb2a1585639dd714'; // ← paste your test public key here
@@ -571,7 +650,7 @@
   async function initiatePayment() {
     const name = document.getElementById('checkoutName').value.trim();
     const phone = document.getElementById('checkoutPhone').value.trim();
-    const landmark = document.getElementById('checkoutLandmark').value.trim();
+    let landmark = document.getElementById('checkoutLandmark').value.trim();
     const zoneSelect = document.getElementById('zoneSelect');
     const paymentMethod = document.querySelector('.pay-option.active')?.dataset.method ?? 'momo';
 
@@ -579,6 +658,14 @@
     if (!name) { alert('Please enter your name.'); return; }
     if (!phone) { alert('Please enter your phone number.'); return; }
     if (zoneSelect.selectedIndex === 0) { alert('Please select a delivery area.'); return; }
+
+    // If they picked "Other", they must type their location — fold it into the landmark field
+    // so it shows up in the order for you/admin without needing a backend/schema change.
+    if (otherZoneId && zoneSelect.value === otherZoneId) {
+      const otherLocation = document.getElementById('otherZoneInput').value.trim();
+      if (!otherLocation) { alert('Please type your location.'); return; }
+      landmark = landmark ? `Area: ${otherLocation} — ${landmark}` : `Area: ${otherLocation}`;
+    }
 
     const zoneId = zoneSelect.value;
     const productIds = Object.keys(activeCheckoutItems);
