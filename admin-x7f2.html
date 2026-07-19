@@ -146,6 +146,7 @@
       <button class="filter-btn" onclick="setFilter('PACKED', this)">Packed</button>
       <button class="filter-btn" onclick="setFilter('DISPATCHED', this)">Dispatched</button>
       <button class="filter-btn" onclick="setFilter('DELIVERED', this)">Delivered</button>
+      <button class="filter-btn" onclick="setFilter('FOLLOWED_UP', this)">Followed Up</button>
       <button class="filter-btn" onclick="setFilter('CANCELLED', this)">Cancelled</button>
     </div>
 
@@ -192,7 +193,7 @@
     let revenue = 0;
     allOrders.forEach(o => {
       counts[o.status] = (counts[o.status] || 0) + 1;
-      if (o.status === 'PAID' || o.status === 'PACKED' || o.status === 'DISPATCHED' || o.status === 'DELIVERED') {
+      if (o.status === 'PAID' || o.status === 'PACKED' || o.status === 'DISPATCHED' || o.status === 'DELIVERED' || o.status === 'FOLLOWED_UP') {
         revenue += o.total;
       }
     });
